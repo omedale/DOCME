@@ -1,36 +1,28 @@
 import express from 'express';
-import winston from 'winston';
-import expressValidator from 'express-validator';
-import bodyParser from 'body-parser';
-import http from 'http';
 import path from 'path';
-import dotenv from 'dotenv';
-import passport from 'passport';
-import auth from './middlewares/authorization';
+import bodyParser from 'body-parser';
 
-dotenv.config();
-const port = process.env.PORT || 8080;
-const app = express();
-app.set('port', port);
+import webpack from 'webpack';
+import webpackMiddleware from 'webpack-dev-middleware';
+import webpackHotMiddleware from 'webpack-hot-middleware';
+import webpackConfig from '../webpack.config.dev';
+
+let app = express();
 
 app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: false }));
-app.use(expressValidator());
-app.use(express.static(path.resolve(`${__dirname}./../clients`)));
 
-app.use('/api', auth.verifyToken);
 
-require('./route')(app, passport);
+const compiler = webpack(webpackConfig);
 
-app.get('/', (req, res) => {
-  res.status(200).render('index.html');
+app.use(webpackMiddleware(compiler, {
+    hot: true,
+    publicPath: webpackConfig.output.publicPath,
+    noInfo: true
+}));
+app.use(webpackHotMiddleware(compiler));
+
+app.get('/*', (req, res) => {
+    res.sendFile(path.join(__dirname, './index.html'));
 });
 
-app.get('*', (req, res) => {
-  res.redirect(302, '/');
-});
-
-const server = http.createServer(app);
-server.listen(port);
-winston.info('We are running on port:', port);
-module.exports = app;
+app.listen(3000, () => console.log('running on 3000'));
